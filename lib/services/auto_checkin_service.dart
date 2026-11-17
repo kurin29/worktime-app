@@ -27,7 +27,6 @@ class AutoCheckInService {
       _unique, _task,
       initialDelay: next.difference(now),
       existingWorkPolicy: ExistingWorkPolicy.replace,
-      constraints: Constraints(networkType: NetworkType.notRequired),
     );
   }
 }
