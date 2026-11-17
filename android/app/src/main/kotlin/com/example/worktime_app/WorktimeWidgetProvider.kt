@@ -44,7 +44,7 @@ class WorktimeWidgetProvider : AppWidgetProvider() {
 
     private fun bgIntent(context: Context, uri: String): PendingIntent {
         return HomeWidgetBackgroundIntent.getBroadcast(
-            context, Uri.parse(uri), null
+            context, Uri.parse(uri)
         )
     }
 }
