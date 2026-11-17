@@ -4,10 +4,10 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetPlugin
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent // <--- 加了这一行！
 
 class WorktimeWidgetProvider : AppWidgetProvider() {
 
@@ -43,7 +43,6 @@ class WorktimeWidgetProvider : AppWidgetProvider() {
     }
 
     private fun bgIntent(context: Context, uri: String): PendingIntent {
-        // 使用 home_widget 提供的后台意图工厂
         return HomeWidgetBackgroundIntent.getBroadcast(
             context, Uri.parse(uri), null
         )
