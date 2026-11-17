@@ -24,6 +24,10 @@ jobs:
       - name: 自动补齐 Flutter 脚手架
         run: flutter create --org com.example --project-name worktime_app --platforms android .
 
+      - name: 机器人自动升级 Gradle 版本
+        run: |
+          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-all.zip|' android/gradle/wrapper/gradle-wrapper.properties
+
       - name: 安装依赖
         run: flutter pub get
 
