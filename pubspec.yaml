@@ -1,1 +1,26 @@
+name: worktime_app
+description: 本地工时工资记录
+publish_to: 'none'
+version: 1.0.0+1
 
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  table_calendar: ^3.1.2
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  flutter_timezone: ^1.0.8
+  workmanager: ^0.5.2
+  home_widget: ^0.9.2
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
