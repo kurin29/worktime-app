@@ -158,4 +158,22 @@ class _SettingsPageState extends State<SettingsPage> {
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280), letterSpacing: 0.
+      Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280), letterSpacing: 0.5))),
+      ...children,
+    ]),
+  );
+
+  Widget _field(TextEditingController c, String label, String? helper, [String? prefix]) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    child: TextField(
+      controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(labelText: label, helperText: helper, prefixText: prefix, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+    ),
+  );
+
+  Widget _tile(String title, String value, bool enabled, VoidCallback onTap) => ListTile(
+    enabled: enabled, title: Text(title),
+    trailing: Text(value, style: TextStyle(color: enabled ? Theme.of(context).colorScheme.primary : const Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
+    onTap: enabled ? onTap : null,
+  );
+}
