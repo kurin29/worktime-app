@@ -27,6 +27,7 @@ class AutoCheckInService {
       _unique, _task,
       initialDelay: next.difference(now),
       existingWorkPolicy: ExistingWorkPolicy.replace,
+      constraints: Constraints(networkType: NetworkType.notRequired),
     );
   }
 }
@@ -35,12 +36,8 @@ class AutoCheckInService {
 void callbackDispatcher() {
   Workmanager().executeTask((_, __) async {
     WidgetsFlutterBinding.ensureInitialized();
-    try {
-      await _runDailyCheck();
-    } catch (_) {}
-    try {
-      await AutoCheckInService.scheduleNext();
-    } catch (_) {}
+    try { await _runDailyCheck(); } catch (_) {}
+    try { await AutoCheckInService.scheduleNext(); } catch (_) {}
     return true;
   });
 }
@@ -51,9 +48,8 @@ Future<void> _runDailyCheck() async {
 
   final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
   final existing = await DatabaseHelper.instance.getRecordByDate(today);
-  if (existing != null &&
-      (existing.clockIn != null || existing.clockOut != null)) {
-    return; // 已打卡，不打扰
+  if (existing != null && (existing.clockIn != null || existing.clockOut != null)) {
+    return;
   }
 
   final record = (existing ?? WorkRecord(date: today)).copyWith(
