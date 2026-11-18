@@ -166,10 +166,8 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _detail(WorkRecord? r, WageResult w) {
-    final isWeekend =
-        DateTime.parse(_selected.toIso8601String()).weekday >= 6 ||
-            r?.leaveType == 3;
-
+    final isWeekend = DateTime.parse(_selected.toIso8601String()).weekday >= 6 || r?.leaveType == 3;
+    
     Widget editBtn;
     if (r == null) {
       editBtn = TextButton.icon(
@@ -202,4 +200,4 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
           color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Column(
-        crossAxisAlignment: CrossAx
+        crossAxisAlignment: CrossAxisAlignment.star
