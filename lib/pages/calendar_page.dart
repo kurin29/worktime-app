@@ -23,10 +23,7 @@ class _CalendarPageState extends State<CalendarPage> {
   bool _loading = true;
 
   @override
-  void initState() {
-    super.initState();
-    _load(_focus);
-  }
+  void initState() { super.initState(); _load(_focus); }
 
   DateTime _d(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -34,60 +31,44 @@ class _CalendarPageState extends State<CalendarPage> {
     final s = await DatabaseHelper.instance.getSettings();
     final rec = await DatabaseHelper.instance.getRecordsForMonth(m);
     final map = <DateTime, List<WorkRecord>>{};
-    for (final r in rec) {
-      map.putIfAbsent(_d(DateTime.parse(r.date)), () => []).add(r);
-    }
+    for (final r in rec) { map.putIfAbsent(_d(DateTime.parse(r.date)), () => []).add(r); }
     if (!mounted) return;
-    setState(() {
-      _s = s;
-      _events = map;
-      _month = rec;
-      _loading = false;
-    });
+    setState(() { _s = s; _events = map; _month = rec; _loading = false; });
   }
 
   Future<void> _editRecord(WorkRecord? existing) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     if (_selected.isAfter(today)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('不能给未来的日期打卡哦'),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('不能给未来的日期打卡哦'), behavior: SnackBarBehavior.floating));
       return;
     }
 
     final dateStr = DateFormat('yyyy-MM-dd').format(_selected);
     final record = existing ?? WorkRecord(date: dateStr);
 
-    final result = await showModalBottomSheet<WorkRecord>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    final result = await showModalBottomSheet<dynamic>(
+      context: context, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => RecordEditSheet(record: record),
     );
 
-    if (result != null) {
-      await DatabaseHelper.instance.upsertRecord(result);
-      if (dateStr == DateFormat('yyyy-MM-dd').format(now)) {
-        await WidgetService.refreshFromRecord(result);
-      }
+    if (result == 'delete') {
+      await DatabaseHelper.instance.deleteRecordByDate(dateStr);
+      if (dateStr == DateFormat('yyyy-MM-dd').format(now)) { await WidgetService.refreshFromRecord(null); }
       await _load(_focus);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('补卡成功'),
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('记录已删除'), behavior: SnackBarBehavior.floating));
+    } else if (result is WorkRecord) {
+      await DatabaseHelper.instance.upsertRecord(result);
+      if (dateStr == DateFormat('yyyy-MM-dd').format(now)) { await WidgetService.refreshFromRecord(result); }
+      await _load(_focus);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('保存成功'), behavior: SnackBarBehavior.floating));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _s == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (_loading || _s == null) return const Center(child: CircularProgressIndicator());
     final key = _d(_selected);
     final list = _events[key] ?? [];
     final r = list.isEmpty ? null : list.first;
@@ -101,57 +82,26 @@ class _CalendarPageState extends State<CalendarPage> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
             child: TableCalendar<WorkRecord>(
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2100, 12, 31),
-              focusedDay: _focus,
-              selectedDayPredicate: (d) => isSameDay(d, _selected),
+              firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2100, 12, 31),
+              focusedDay: _focus, selectedDayPredicate: (d) => isSameDay(d, _selected),
               availableCalendarFormats: const {CalendarFormat.month: '月'},
               eventLoader: (d) => _events[_d(d)] ?? [],
-              onDaySelected: (s, f) => setState(() {
-                _selected = s;
-                _focus = f;
-              }),
-              onPageChanged: (f) {
-                _focus = f;
-                _load(f);
-              },
-              headerStyle: const HeaderStyle(
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                  titleTextStyle:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              onDaySelected: (s, f) => setState(() { _selected = s; _focus = f; }),
+              onPageChanged: (f) { _focus = f; _load(f); },
+              headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               calendarStyle: CalendarStyle(
-                todayDecoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.15),
-                    shape: BoxShape.circle),
-                todayTextStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold),
-                selectedDecoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle),
+                todayDecoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.15), shape: BoxShape.circle),
+                todayTextStyle: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                selectedDecoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle),
                 markersMaxCount: 1,
               ),
               calendarBuilders: CalendarBuilders<WorkRecord>(
                 markerBuilder: (_, day, events) {
                   if (events.isEmpty) return null;
                   final auto = events.first.autoGenerated;
-                  return Positioned(
-                    bottom: 4,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                          color: auto
-                              ? const Color(0xFFF59E0B)
-                              : const Color(0xFF10B981),
-                          shape: BoxShape.circle),
-                    ),
-                  );
+                  return Positioned(bottom: 4, child: Container(width: 6, height: 6, decoration: BoxDecoration(color: auto ? const Color(0xFFF59E0B) : const Color(0xFF10B981), shape: BoxShape.circle)));
                 },
               ),
             ),
@@ -166,161 +116,81 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _detail(WorkRecord? r, WageResult w) {
-    final isWeekend = DateTime.parse(_selected.toIso8601String()).weekday >= 6 || r?.leaveType == 3;
-    
+    final isSat = _selected.weekday == 6;
+    final isSun = _selected.weekday == 7;
+    final isWeekend = isSat || isSun || r?.leaveType == 3;
+
     Widget editBtn;
     if (r == null) {
-      editBtn = TextButton.icon(
-        onPressed: () => _editRecord(r),
-        icon: const Icon(Icons.add_circle_outline, size: 18),
-        label: const Text('补卡'),
-        style: TextButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.primary,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      );
+      editBtn = TextButton.icon(onPressed: () => _editRecord(r), icon: const Icon(Icons.add_circle_outline, size: 18), label: const Text('补卡'), style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary, padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap));
     } else {
-      editBtn = TextButton.icon(
-        onPressed: () => _editRecord(r),
-        icon: const Icon(Icons.edit_outlined, size: 18),
-        label: const Text('编辑'),
-        style: TextButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.primary,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      );
+      editBtn = TextButton.icon(onPressed: () => _editRecord(r), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('编辑'), style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary, padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap));
     }
 
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(DateFormat('M月d日 EEEE', 'zh').format(_selected), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const Spacer(),
+          if (r != null && r.autoGenerated)
+            Container(margin: const EdgeInsets.only(right: 8), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(8)), child: const Text('自动补卡', style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.w600))),
+          editBtn,
+        ]),
+        const Divider(height: 20),
+        if (r == null)
+          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Center(child: Text('当天暂无记录', style: TextStyle(color: Color(0xFF9CA3AF)))))
+        else if (r.leaveType == 1 || r.leaveType == 2) ...[
+          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Center(child: Text('今日请假', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)))),
+        ] else ...[
           Row(children: [
-            Text(DateFormat('M月d日 EEEE', 'zh').format(_selected),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            if (r != null && r.autoGenerated)
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(8)),
-                child: const Text('自动补卡',
-                    style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontWeight: FontWeight.w600)),
-              ),
-            editBtn,
+            Expanded(child: _mini('上班', r.clockIn ?? '--', const Color(0xFF3B82F6))),
+            Expanded(child: _mini('下班', r.clockOut ?? '--', const Color(0xFF10B981))),
+            Expanded(child: _mini('休息', _break(r), const Color(0xFFF59E0B))),
           ]),
           const Divider(height: 20),
-          if (r == null)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Center(child: Text('当天暂无记录', style: TextStyle(color: Color(0xFF9CA3AF)))),
-            )
-          else if (r.leaveType == 1 || r.leaveType == 2) ...[
-             const Padding(
-               padding: EdgeInsets.symmetric(vertical: 12), 
-               child: Center(
-                 child: Text('今日请假', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red))
-               )
-             ),
-          ] else ...[
-            Row(children: [
-              Expanded(child: _mini('上班', r.clockIn ?? '--', const Color(0xFF3B82F6))),
-              Expanded(child: _mini('下班', r.clockOut ?? '--', const Color(0xFF10B981))),
-              Expanded(child: _mini('休息', _break(r), const Color(0xFFF59E0B))),
-            ]),
-            const Divider(height: 20),
-            _line('正常工时', '${w.normalHours.toStringAsFixed(2)} 小时', '¥${w.basePay.toStringAsFixed(2)}'),
-            if (!isWeekend && w.overtimeHours1 > 0)
-              _line('一阶加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
-            if (!isWeekend && w.overtimeHours2 > 0)
-              _line('二阶加班', '${w.overtimeHours2.toStringAsFixed(2)} 小时', '¥${w.overtimePay2.toStringAsFixed(2)}'),
-            if (isWeekend && w.overtimeHours1 > 0)
-              _line('周末加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
-            const Divider(height: 20),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('当天合计', style: TextStyle(fontWeight: FontWeight.w600)),
-              Text('¥${w.totalPay.toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-            ]),
-          ],
+          _line('正常工时', '${w.normalHours.toStringAsFixed(2)} 小时', '¥${w.basePay.toStringAsFixed(2)}'),
+          if (!isWeekend && w.overtimeHours1 > 0) _line('一阶加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
+          if (!isWeekend && w.overtimeHours2 > 0) _line('二阶加班', '${w.overtimeHours2.toStringAsFixed(2)} 小时', '¥${w.overtimePay2.toStringAsFixed(2)}'),
+          if (isWeekend && w.overtimeHours1 > 0) _line(isSun ? '周日加班' : '周六加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
+          const Divider(height: 20),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('当天合计', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('¥${w.totalPay.toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+          ]),
         ],
-      ),
+      ]),
     );
   }
 
-    String _break(WorkRecord r) {
+  String _break(WorkRecord r) {
     if (r.breakStart != null && r.breakEnd != null) return '${r.breakStart}-${r.breakEnd}';
     if (r.breakStart != null) return '${r.breakStart}-…';
     return r.breakMinutes > 0 ? '${r.breakMinutes}分' : '--';
   }
 
-  Widget _mini(String l, String v, Color c) => Column(children: [
-        Text(l, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-        const SizedBox(height: 4),
-        Text(v, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c)),
-      ]);
+  Widget _mini(String l, String v, Color c) => Column(children: [Text(l, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))), const SizedBox(height: 4), Text(v, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c))]);
 
-  Widget _line(String k, String h, String money) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(k, style: const TextStyle(color: Color(0xFF6B7280))),
-            Row(
-              children: [
-                Text(h, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
-                const SizedBox(width: 10),
-                Text(money, style: const TextStyle(fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ],
-        ),
-      );
+  Widget _line(String k, String h, String money) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(k, style: const TextStyle(color: Color(0xFF6B7280))), Row(children: [Text(h, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)), const SizedBox(width: 10), Text(money, style: const TextStyle(fontWeight: FontWeight.w500))])]));
 
   Widget _monthCard(WageResult w) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF1E293B), Color(0xFF0F172A)]),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF1E293B), Color(0xFF0F172A)]), borderRadius: BorderRadius.circular(20)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('${_focus.year}年${_focus.month}月 工资汇总', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _sumItem('正常工时', '${w.normalHours.toStringAsFixed(1)}h')),
-          Expanded(child: _sumItem('一阶加班', '${w.overtimeHours1.toStringAsFixed(1)}h')),
-          Expanded(child: _sumItem('二阶加班', '${w.overtimeHours2.toStringAsFixed(1)}h')),
-        ]),
+        Row(children: [Expanded(child: _sumItem('正常工时', '${w.normalHours.toStringAsFixed(1)}h')), Expanded(child: _sumItem('一阶加班', '${w.overtimeHours1.toStringAsFixed(1)}h')), Expanded(child: _sumItem('二阶加班', '${w.overtimeHours2.toStringAsFixed(1)}h'))]),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _sumItem('底薪', '¥${w.basePay.toStringAsFixed(0)}')),
-          Expanded(child: _sumItem('加班费', '¥${w.overtimePay.toStringAsFixed(0)}')),
-        ]),
+        Row(children: [Expanded(child: _sumItem('底薪', '¥${w.basePay.toStringAsFixed(0)}')), Expanded(child: _sumItem('加班费', '¥${w.overtimePay.toStringAsFixed(0)}'))]),
         const Divider(color: Colors.white24, height: 24),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('本月合计', style: TextStyle(color: Colors.white70, fontSize: 13)),
-          Text('¥${w.totalPay.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
-        ]),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('本月合计', style: TextStyle(color: Colors.white70, fontSize: 13)), Text('¥${w.totalPay.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold))]),
       ]),
     );
   }
-    Widget _sumItem(String l, String v) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(v, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-        ],
-      );
+
+  Widget _sumItem(String l, String v) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(l, style: const TextStyle(color: Colors.white54, fontSize: 12)), const SizedBox(height: 4), Text(v, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))]);
 }
 
 class RecordEditSheet extends StatefulWidget {
@@ -337,20 +207,15 @@ class _RecordEditSheetState extends State<RecordEditSheet> {
   @override
   void initState() {
     super.initState();
-    _in = widget.record.clockIn;
-    _out = widget.record.clockOut;
-    _bs = widget.record.breakStart;
-    _be = widget.record.breakEnd;
+    _in = widget.record.clockIn; _out = widget.record.clockOut;
+    _bs = widget.record.breakStart; _be = widget.record.breakEnd;
     _bm = TextEditingController(text: widget.record.breakMinutes.toString());
     _om = TextEditingController(text: widget.record.overtimeMinutes.toString());
     _note = TextEditingController(text: widget.record.note ?? '');
   }
 
   @override
-  void dispose() {
-    _bm.dispose(); _om.dispose(); _note.dispose();
-    super.dispose();
-  }
+  void dispose() { _bm.dispose(); _om.dispose(); _note.dispose(); super.dispose(); }
 
   TimeOfDay _t(String? v) {
     if (v == null) return const TimeOfDay(hour: 9, minute: 0);
@@ -377,59 +242,49 @@ class _RecordEditSheetState extends State<RecordEditSheet> {
             Text('编辑 ${widget.record.date} 记录', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: _timeTile('上班', _in, () async {
-                final v = await _pick(_in);
-                if (v != null) setState(() => _in = v);
-              })),
+              Expanded(child: _timeTile('上班', _in, () async { final v = await _pick(_in); if (v != null) setState(() => _in = v); })),
               const SizedBox(width: 10),
-              Expanded(child: _timeTile('下班', _out, () async {
-                final v = await _pick(_out);
-                if (v != null) setState(() => _out = v);
-              })),
+              Expanded(child: _timeTile('下班', _out, () async { final v = await _pick(_out); if (v != null) setState(() => _out = v); })),
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: _timeTile('休息开始', _bs, () async {
-                final v = await _pick(_bs);
-                if (v != null) setState(() => _bs = v);
-              })),
+              Expanded(child: _timeTile('休息开始', _bs, () async { final v = await _pick(_bs); if (v != null) setState(() => _bs = v); })),
               const SizedBox(width: 10),
-              Expanded(child: _timeTile('休息结束', _be, () async {
-                final v = await _pick(_be);
-                if (v != null) setState(() => _be = v);
-              })),
+              Expanded(child: _timeTile('休息结束', _be, () async { final v = await _pick(_be); if (v != null) setState(() => _be = v); })),
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: TextField(
-                controller: _bm, keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: '休息分钟', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-              )),
+              Expanded(child: TextField(controller: _bm, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: '休息分钟', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))))),
               const SizedBox(width: 10),
-              Expanded(child: TextField(
-                controller: _om, keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: '加班分钟', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-              )),
+              Expanded(child: TextField(controller: _om, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: '加班分钟', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))))),
             ]),
             const SizedBox(height: 10),
-            TextField(
-              controller: _note,
-              decoration: InputDecoration(labelText: '备注', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-            ),
+            TextField(controller: _note, decoration: InputDecoration(labelText: '备注', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
             const SizedBox(height: 20),
             Row(children: [
-              Expanded(child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                child: const Text('取消'),
-              )),
+              if (widget.record.id != null) ...[
+                IconButton(
+                  onPressed: () {
+                    showDialog(context: context, builder: (ctx) => AlertDialog(
+                      title: const Text('确认删除？'), content: const Text('确定要删除这一天的打卡记录吗？'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+                        TextButton(onPressed: () { Navigator.pop(ctx); Navigator.pop(context, 'delete'); }, child: const Text('删除', style: TextStyle(color: Colors.red))),
+                      ],
+                    ));
+                  },
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  tooltip: '删除记录',
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Text('取消'))),
               const SizedBox(width: 12),
               Expanded(child: FilledButton(
                 onPressed: () {
                   Navigator.pop(context, widget.record.copyWith(
                     clockIn: _in, clockOut: _out, breakStart: _bs, breakEnd: _be,
-                    breakMinutes: int.tryParse(_bm.text) ?? 0,
-                    overtimeMinutes: int.tryParse(_om.text) ?? 0,
+                    breakMinutes: int.tryParse(_bm.text) ?? 0, overtimeMinutes: int.tryParse(_om.text) ?? 0,
                     note: _note.text.trim().isEmpty ? null : _note.text.trim(),
                   ));
                 },
@@ -447,11 +302,21 @@ class _RecordEditSheetState extends State<RecordEditSheet> {
         onTap: onTap, borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE5E7EB)), borderRadius: BorderRadius.circular(14)),
+          decoration: BoxDecoration(
+            border: Border.all(color: v != null ? Theme.of(context).colorScheme.primary.withOpacity(0.5) : const Color(0xFFE5E7EB)), 
+            borderRadius: BorderRadius.circular(14),
+            color: v != null ? Theme.of(context).colorScheme.primary.withOpacity(0.05) : Colors.transparent,
+          ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-            const SizedBox(height: 4),
-            Text(v ?? '未设置', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: v == null ? const Color(0xFF9CA3AF) : Colors.black)),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(v ?? '未设置', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: v == null ? const Color(0xFF9CA3AF) : Theme.of(context).colorScheme.primary)),
+                Icon(Icons.access_time, size: 16, color: v == null ? const Color(0xFF9CA3AF) : Theme.of(context).colorScheme.primary),
+              ],
+            ),
           ]),
         ),
       );
