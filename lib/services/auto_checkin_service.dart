@@ -27,7 +27,7 @@ class AutoCheckInService {
       _unique, _task,
       initialDelay: next.difference(now),
       existingWorkPolicy: ExistingWorkPolicy.replace,
-      constraints: Constraints(networkType: NetworkType.notRequired),
+      // 删除了 constraints 那行，避免 notRequired 报错
     );
   }
 }
