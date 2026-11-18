@@ -4,7 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'db/database_helper.dart';
 import 'pages/calendar_page.dart';
-import 'pages/home_page.dart'; // 补上了这个 import
+import 'pages/home_page.dart'; // 👈 就是这一行，确保它存在
 import 'pages/settings_page.dart';
 import 'services/auto_checkin_service.dart';
 import 'services/notification_service.dart';
