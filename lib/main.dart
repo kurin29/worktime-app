@@ -13,7 +13,6 @@ import 'services/widget_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 拦截渲染错误，用文字显示出来，告别灰屏
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return Material(
       color: Colors.red.shade50,
