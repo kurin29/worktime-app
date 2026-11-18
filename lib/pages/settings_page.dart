@@ -29,20 +29,18 @@ class _SettingsPageState extends State<SettingsPage> {
   String _phase1End = '21:00';
   final _p1Rate = TextEditingController();
   final _p2Rate = TextEditingController();
-  final _wkRate = TextEditingController();
+  final _satRate = TextEditingController();
+  final _sunRate = TextEditingController();
   final _perLeave = TextEditingController();
   final _sickLeave = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  void initState() { super.initState(); _load(); }
 
   @override
   void dispose() {
     _salary.dispose(); _days.dispose(); _std.dispose();
-    _p1Rate.dispose(); _p2Rate.dispose(); _wkRate.dispose();
+    _p1Rate.dispose(); _p2Rate.dispose(); _satRate.dispose(); _sunRate.dispose();
     _perLeave.dispose(); _sickLeave.dispose();
     super.dispose();
   }
@@ -54,21 +52,15 @@ class _SettingsPageState extends State<SettingsPage> {
     _std.text = s.standardHoursPerDay.toString();
     _p1Rate.text = s.phase1Rate.toString();
     _p2Rate.text = s.phase2Rate.toString();
-    _wkRate.text = s.weekendRate.toString();
+    _satRate.text = s.saturdayRate.toString();
+    _sunRate.text = s.sundayRate.toString();
     _perLeave.text = s.personalLeaveRatio.toString();
     _sickLeave.text = s.sickLeaveRatio.toString();
-    
     if (!mounted) return;
     setState(() {
-      _fixed = s.isFixedSalary;
-      _remind = s.remindTime;
-      _auto = s.autoFillEnabled;
-      _autoTime = s.autoCheckTime;
-      _fillIn = s.fillClockInTime;
-      _fillOut = s.fillClockOutTime;
-      _stdOut = s.standardClockOut;
-      _phase1End = s.phase1End;
-      _loading = false;
+      _fixed = s.isFixedSalary; _remind = s.remindTime; _auto = s.autoFillEnabled;
+      _autoTime = s.autoCheckTime; _fillIn = s.fillClockInTime; _fillOut = s.fillClockOutTime;
+      _stdOut = s.standardClockOut; _phase1End = s.phase1End; _loading = false;
     });
   }
 
@@ -82,19 +74,15 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _save() async {
     final s = AppSettings(
       monthlyBaseSalary: double.tryParse(_salary.text.trim()) ?? 0,
-      isFixedSalary: _fixed,
-      payDaysPerMonth: double.tryParse(_days.text.trim()) ?? 21.75,
+      isFixedSalary: _fixed, payDaysPerMonth: double.tryParse(_days.text.trim()) ?? 21.75,
       standardHoursPerDay: double.tryParse(_std.text.trim()) ?? 8,
-      remindTime: _remind,
-      autoFillEnabled: _auto,
-      autoCheckTime: _autoTime,
-      fillClockInTime: _fillIn,
-      fillClockOutTime: _fillOut,
-      standardClockOut: _stdOut,
-      phase1End: _phase1End,
+      remindTime: _remind, autoFillEnabled: _auto, autoCheckTime: _autoTime,
+      fillClockInTime: _fillIn, fillClockOutTime: _fillOut,
+      standardClockOut: _stdOut, phase1End: _phase1End,
       phase1Rate: double.tryParse(_p1Rate.text.trim()) ?? 18,
       phase2Rate: double.tryParse(_p2Rate.text.trim()) ?? 21,
-      weekendRate: double.tryParse(_wkRate.text.trim()) ?? 24,
+      saturdayRate: double.tryParse(_satRate.text.trim()) ?? 24,
+      sundayRate: double.tryParse(_sunRate.text.trim()) ?? 26,
       personalLeaveRatio: double.tryParse(_perLeave.text.trim()) ?? 1.0,
       sickLeaveRatio: double.tryParse(_sickLeave.text.trim()) ?? 0.4,
     );
@@ -120,19 +108,12 @@ class _SettingsPageState extends State<SettingsPage> {
         ]),
         const SizedBox(height: 12),
         _section('加班与分段工资', [
-          ListTile(
-            title: const Text('标准下班时间'), subtitle: const Text('此后的时间记为加班'),
-            trailing: Text(_stdOut, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
-            onTap: () => _pick(_stdOut, (v) => setState(() => _stdOut = v)),
-          ),
-          ListTile(
-            title: const Text('第一段加班结束时间'), subtitle: const Text('下班时间到此时段为第一段'),
-            trailing: Text(_phase1End, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
-            onTap: () => _pick(_phase1End, (v) => setState(() => _phase1End = v)),
-          ),
+          ListTile(title: const Text('标准下班时间'), subtitle: const Text('此后的时间记为加班'), trailing: Text(_stdOut, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)), onTap: () => _pick(_stdOut, (v) => setState(() => _stdOut = v))),
+          ListTile(title: const Text('第一段加班结束时间'), subtitle: const Text('下班到此时段为一段'), trailing: Text(_phase1End, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)), onTap: () => _pick(_phase1End, (v) => setState(() => _phase1End = v))),
           _field(_p1Rate, '第一段加班时薪', '如 18:00-21:00', '¥ '),
           _field(_p2Rate, '第二段加班时薪', '如 21:00 之后', '¥ '),
-          _field(_wkRate, '周末加班时薪', '周末打卡全天按时薪计', '¥ '),
+          _field(_satRate, '周六加班时薪', '全天按时薪计', '¥ '),
+          _field(_sunRate, '周日加班时薪', '全天按时薪计', '¥ '),
         ]),
         const SizedBox(height: 12),
         _section('请假扣款设置', [
@@ -155,8 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _section(String title, List<Widget> children) => Container(
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), padding: const EdgeInsets.symmetric(vertical: 8),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280), letterSpacing: 0.5))),
       ...children,
@@ -165,15 +145,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _field(TextEditingController c, String label, String? helper, [String? prefix]) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-    child: TextField(
-      controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: label, helperText: helper, prefixText: prefix, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-    ),
+    child: TextField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: label, helperText: helper, prefixText: prefix, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
   );
 
   Widget _tile(String title, String value, bool enabled, VoidCallback onTap) => ListTile(
-    enabled: enabled, title: Text(title),
-    trailing: Text(value, style: TextStyle(color: enabled ? Theme.of(context).colorScheme.primary : const Color(0xFF9CA3AF), fontWeight: FontWeight.w600)),
-    onTap: enabled ? onTap : null,
+    enabled: enabled, title: Text(title), trailing: Text(value, style: TextStyle(color: enabled ? Theme.of(context).colorScheme.primary : const Color(0xFF9CA3AF), fontWeight: FontWeight.w600)), onTap: enabled ? onTap : null,
   );
 }
