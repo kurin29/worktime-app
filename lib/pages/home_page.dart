@@ -18,25 +18,17 @@ class _HomePageState extends State<HomePage> {
   AppSettings? _s;
   WorkRecord? _r;
   bool _loading = true;
-
   String get _today => DateFormat('yyyy-MM-dd').format(DateTime.now());
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
     final s = await DatabaseHelper.instance.getSettings();
     final r = await DatabaseHelper.instance.getRecordByDate(_today);
     try { await WidgetService.refreshFromRecord(r); } catch (_) {}
     if (!mounted) return;
-    setState(() {
-      _s = s;
-      _r = r;
-      _loading = false;
-    });
+    setState(() { _s = s; _r = r; _loading = false; });
   }
 
   Future<void> _changeStatus(int type) async {
@@ -53,51 +45,57 @@ class _HomePageState extends State<HomePage> {
       await DatabaseHelper.instance.upsertRecord(updated);
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(msg), behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), duration: const Duration(seconds: 2)));
       }
     } catch (e) {
       _toast('操作失败: $e');
     }
   }
 
-  Future<void> _clockIn() async {
+  Future<void> _customClockIn() async {
+    final baseTime = _r?.clockIn != null ? TimeOfDay(hour: int.parse(_r!.clockIn!.split(':')[0]), minute: int.parse(_r!.clockIn!.split(':')[1])) : TimeOfDay.now();
+    final picked = await showTimePicker(context: context, initialTime: baseTime, helpText: '选择上班打卡时间');
+    if (picked == null) return;
+    final t = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     HapticFeedback.mediumImpact();
-    final t = DateFormat('HH:mm').format(DateTime.now());
     await _write((r) => Future.value(r.copyWith(clockIn: t, leaveType: 0)), '上班打卡 $t');
   }
 
-  Future<void> _clockOut() async {
+  Future<void> _customClockOut() async {
     if (_r?.clockIn == null) return _toast('请先上班打卡');
+    final baseTime = _r?.clockOut != null ? TimeOfDay(hour: int.parse(_r!.clockOut!.split(':')[0]), minute: int.parse(_r!.clockOut!.split(':')[1])) : TimeOfDay.now();
+    final picked = await showTimePicker(context: context, initialTime: baseTime, helpText: '选择下班打卡时间');
+    if (picked == null) return;
+    final t = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     HapticFeedback.mediumImpact();
-    final t = DateFormat('HH:mm').format(DateTime.now());
     await _write((r) => Future.value(r.copyWith(clockOut: t, breakStart: null, breakEnd: null)), '下班打卡 $t');
   }
 
   Future<void> _breakStart() async {
     if (_r?.clockIn == null) return _toast('请先上班打卡');
+    final baseTime = _r?.breakStart != null ? TimeOfDay(hour: int.parse(_r!.breakStart!.split(':')[0]), minute: int.parse(_r!.breakStart!.split(':')[1])) : TimeOfDay.now();
+    final picked = await showTimePicker(context: context, initialTime: baseTime, helpText: '休息开始时间');
+    if (picked == null) return;
+    final t = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     HapticFeedback.lightImpact();
-    final t = DateFormat('HH:mm').format(DateTime.now());
     await _write((r) => Future.value(r.copyWith(breakStart: t, breakEnd: null)), '休息开始 $t');
   }
 
   Future<void> _breakEnd() async {
     if (_r?.breakStart == null) return _toast('请先开始休息');
+    final baseTime = _r?.breakEnd != null ? TimeOfDay(hour: int.parse(_r!.breakEnd!.split(':')[0]), minute: int.parse(_r!.breakEnd!.split(':')[1])) : TimeOfDay.now();
+    final picked = await showTimePicker(context: context, initialTime: baseTime, helpText: '休息结束时间');
+    if (picked == null) return;
+    final t = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     HapticFeedback.lightImpact();
-    final t = DateFormat('HH:mm').format(DateTime.now());
     await _write((r) => Future.value(r.copyWith(breakEnd: t)), '休息结束 $t');
   }
 
-  void _toast(String m) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(m), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-      );
+  void _toast(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
 
   @override
   Widget build(BuildContext context) {
     if (_loading || _s == null) return const Center(child: CircularProgressIndicator());
-    
     final w = WageCalculator(_s!).calculateDay(_r);
     final hasIn = _r?.clockIn != null;
     final hasOut = _r?.clockOut != null;
@@ -124,9 +122,9 @@ class _HomePageState extends State<HomePage> {
             _statusCard(hasIn, hasOut, onBreak, w),
             const SizedBox(height: 14),
             Row(children: [
-              Expanded(child: _btn(hasIn ? '重打上班' : '上班打卡', Icons.login, hasIn ? const Color(0xFF9CA3AF) : const Color(0xFF3B82F6), _clockIn)),
+              Expanded(child: _btn(hasIn ? '重打上班' : '上班打卡', Icons.login, hasIn ? const Color(0xFF9CA3AF) : const Color(0xFF3B82F6), _customClockIn)),
               const SizedBox(width: 10),
-              Expanded(child: _btn(hasOut ? '重打下班' : '下班打卡', Icons.logout, hasOut ? const Color(0xFF9CA3AF) : const Color(0xFF10B981), _clockOut)),
+              Expanded(child: _btn(hasOut ? '重打下班' : '下班打卡', Icons.logout, hasOut ? const Color(0xFF9CA3AF) : const Color(0xFF10B981), _customClockOut)),
             ]),
             const SizedBox(height: 10),
             Row(children: [
@@ -150,9 +148,9 @@ class _HomePageState extends State<HomePage> {
             if (status == 3) ...[
                const SizedBox(height: 14),
                Row(children: [
-                Expanded(child: _btn(hasIn ? '重打上班' : '上班打卡', Icons.login, hasIn ? const Color(0xFF9CA3AF) : const Color(0xFF3B82F6), _clockIn)),
+                Expanded(child: _btn(hasIn ? '重打上班' : '上班打卡', Icons.login, hasIn ? const Color(0xFF9CA3AF) : const Color(0xFF3B82F6), _customClockIn)),
                 const SizedBox(width: 10),
-                Expanded(child: _btn(hasOut ? '重打下班' : '下班打卡', Icons.logout, hasOut ? const Color(0xFF9CA3AF) : const Color(0xFF10B981), _clockOut)),
+                Expanded(child: _btn(hasOut ? '重打下班' : '下班打卡', Icons.logout, hasOut ? const Color(0xFF9CA3AF) : const Color(0xFF10B981), _customClockOut)),
               ]),
             ]
           ],
@@ -163,22 +161,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-    Widget _statusChip(String label, int type, int current, Color color) {
+  Widget _statusChip(String label, int type, int current, Color color) {
     final selected = type == current;
     return ChoiceChip(
       label: Text(label, style: TextStyle(color: selected ? Colors.white : Colors.black87, fontSize: 13)),
       selected: selected,
       selectedColor: color,
-      onSelected: (val) {
-        if (val) {
-          _changeStatus(type);
-        }
-      },
+      onSelected: (val) { if (val) _changeStatus(type); },
     );
   }
 
   Widget _statusCard(bool hasIn, bool hasOut, bool onBreak, WageResult w) {
-    final isWeekend = DateTime.now().weekday >= 6;
+    final wd = DateTime.now().weekday;
+    final isSat = wd == 6;
+    final isSun = wd == 7;
+    final isWeekend = isSat || isSun;
+    
     final colors = (hasIn && hasOut) ? [const Color(0xFF10B981), const Color(0xFF059669)] : onBreak ? [const Color(0xFFF59E0B), const Color(0xFFEA580C)] : hasIn ? [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)] : [const Color(0xFFF59E0B), const Color(0xFFEA580C)];
     final statusText = (hasIn && hasOut) ? '已完成' : onBreak ? '休息中' : hasIn ? '工作中' : '未打卡';
 
@@ -198,107 +196,3 @@ class _HomePageState extends State<HomePage> {
             child: Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ]),
-        const SizedBox(height: 18),
-        Row(children: [
-          Expanded(child: _kvWhite('上班', _r?.clockIn ?? '--')),
-          Container(width: 1, height: 36, color: Colors.white24, margin: const EdgeInsets.symmetric(horizontal: 10)),
-          Expanded(child: _kvWhite('下班', _r?.clockOut ?? '--')),
-          Container(width: 1, height: 36, color: Colors.white24, margin: const EdgeInsets.symmetric(horizontal: 10)),
-          Expanded(child: _kvWhite('休息', _breakText())),
-        ]),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(child: _miniStat('正常工时', w.normalHours, Colors.white)),
-            Expanded(child: _miniStat(isWeekend ? '周末' : '一阶加班', w.overtimeHours1, Colors.white)),
-            if (!isWeekend) Expanded(child: _miniStat('二阶加班', w.overtimeHours2, Colors.white)),
-          ],
-        )
-      ]),
-    );
-  }
-
-  Widget _miniStat(String label, double val, Color color) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: TextStyle(color: color.withOpacity(0.7), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-      const SizedBox(height: 4),
-      Text('${val.toStringAsFixed(1)}h', style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 1),
-    ],
-  );
-
-  String _breakText() {
-    final r = _r;
-    if (r == null || r.breakStart == null) return '--';
-    if (r.breakEnd == null) return '${r.breakStart}-…';
-    return '${r.breakStart}-${r.breakEnd}';
-  }
-
-  Widget _kvWhite(String k, String v) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(k, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-      const SizedBox(height: 4),
-      Text(v, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-    ],
-  );
-
-  Widget _btn(String label, IconData icon, Color color, VoidCallback onTap) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _summary(WageResult w) {
-    final isWeekend = DateTime.now().weekday >= 6 || _r?.leaveType == 3;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.receipt_long_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
-          const SizedBox(width: 8),
-          Text(_s!.isFixedSalary ? '固定月薪模式' : '工时折算模式', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 14),
-        _line('正常工时', '${w.normalHours.toStringAsFixed(2)} 小时', '¥${w.basePay.toStringAsFixed(2)}'),
-        if (!isWeekend && w.overtimeHours1 > 0)
-          _line('一阶加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
-        if (!isWeekend && w.overtimeHours2 > 0)
-          _line('二阶加班', '${w.overtimeHours2.toStringAsFixed(2)} 小时', '¥${w.overtimePay2.toStringAsFixed(2)}'),
-        if (isWeekend && w.overtimeHours1 > 0)
-          _line('周末加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
-        const Divider(height: 20),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('今日合计', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          Text('¥${w.totalPay.toStringAsFixed(2)}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
-        ]),
-      ]),
-    );
-  }
-
-  Widget _line(String k, String h, String money) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          children: [
-            Expanded(child: Text(k, style: const TextStyle(color: Color(0xFF6B7280)))),
-            Text(h, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
-            const SizedBox(width: 10),
-            Text(money, style: const TextStyle(fontWeight: FontWeight.w500)),
-          ],
-        ),
-      );
-}
