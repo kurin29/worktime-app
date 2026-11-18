@@ -37,25 +37,32 @@ class WageCalculator {
     return s.monthlyBaseSalary / s.payDaysPerMonth / s.standardHoursPerDay;
   }
 
-  static int _m(String v) {
+  // 安全解析时间，解析失败返回 0
+  static int _m(String? v) {
+    if (v == null || v.isEmpty) return 0;
     try {
       final p = v.split(':').map(int.parse).toList();
       return p[0] * 60 + p[1];
     } catch (e) {
-      return 0; // 容错：解析失败返回0
+      return 0;
     }
   }
 
   WageResult calculateDay(WorkRecord? r) {
-    if (r == null || (r.clockIn == null && r.clockOut == null) || r.leaveType == 1 || r.leaveType == 2) {
+    // 如果没有记录，或者只有上班没下班（甚至都没打卡），直接返回 0，防止崩溃
+    if (r == null || r.clockIn == null || r.clockOut == null) {
+      return WageResult.zero();
+    }
+    if (r.leaveType == 1 || r.leaveType == 2) {
       return WageResult.zero();
     }
 
-    final inM = _m(r.clockIn!);
-    var outM = _m(r.clockOut!);
-    if (outM < inM) outM += 24 * 60;
+    final inM = _m(r.clockIn);
+    var outM = _m(r.clockOut);
+    if (outM < inM) outM += 24 * 60; // 跨天
 
-    final isWeekend = DateTime.parse(r.date).weekday >= 6 || r.leaveType == 3;
+    final isWeekend = DateTime.tryParse(r.date)?.weekday != null && DateTime.parse(r.date).weekday >= 6 || r.leaveType == 3;
+    
     double normalH = 0, ot1H = 0, ot2H = 0;
     double basePay = 0, ot1Pay = 0, ot2Pay = 0;
 
