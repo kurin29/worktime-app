@@ -47,7 +47,6 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Future<void> _editRecord(WorkRecord? existing) async {
-    // 1. 不能给未来补卡
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     if (_selected.isAfter(today)) {
@@ -58,11 +57,9 @@ class _CalendarPageState extends State<CalendarPage> {
       return;
     }
 
-    // 2. 准备初始数据
     final dateStr = DateFormat('yyyy-MM-dd').format(_selected);
     final record = existing ?? WorkRecord(date: dateStr);
 
-    // 3. 弹出编辑框
     final result = await showModalBottomSheet<WorkRecord>(
       context: context,
       isScrollControlled: true,
@@ -71,15 +68,11 @@ class _CalendarPageState extends State<CalendarPage> {
       builder: (_) => RecordEditSheet(record: record),
     );
 
-    // 4. 保存并刷新
     if (result != null) {
       await DatabaseHelper.instance.upsertRecord(result);
-      
-      // 如果是今天，顺便刷新一下小组件
       if (dateStr == DateFormat('yyyy-MM-dd').format(now)) {
         await WidgetService.refreshFromRecord(result);
       }
-      
       await _load(_focus);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -172,6 +165,8 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _detail(WorkRecord? r, WageResult w) {
+    final isWeekend = DateTime.parse(_selected.toIso8601String()).weekday >= 6 || r?.leaveType == 3;
+    
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -194,7 +189,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       color: Color(0xFFB45309),
                       fontWeight: FontWeight.w600)),
             ),
-          // 👇 新增：补卡 / 编辑按钮
           TextButton.icon(
             onPressed: () => _editRecord(r),
-            icon: Icon(r == null ? Icons.add_circle_outline : Icons.edit_outlined, size: 18)
+            icon: Icon(r == null ? Icons.add_circle_outline : Icons.edit_outlined, size: 18),
+            label: Text(r =
