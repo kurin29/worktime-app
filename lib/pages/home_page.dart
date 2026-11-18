@@ -196,3 +196,109 @@ class _HomePageState extends State<HomePage> {
             child: Text(statusText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ]),
+        const SizedBox(height: 18),
+        Row(children: [
+          Expanded(child: _kvWhite('上班', _r?.clockIn ?? '--')),
+          Container(width: 1, height: 36, color: Colors.white24, margin: const EdgeInsets.symmetric(horizontal: 10)),
+          Expanded(child: _kvWhite('下班', _r?.clockOut ?? '--')),
+          Container(width: 1, height: 36, color: Colors.white24, margin: const EdgeInsets.symmetric(horizontal: 10)),
+          Expanded(child: _kvWhite('休息', _breakText())),
+        ]),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(child: _miniStat('正常工时', w.normalHours, Colors.white)),
+            Expanded(child: _miniStat(isSun ? '周日加班' : isSat ? '周六加班' : '一阶加班', w.overtimeHours1, Colors.white)),
+            if (!isWeekend) Expanded(child: _miniStat('二阶加班', w.overtimeHours2, Colors.white)),
+          ],
+        )
+      ]),
+    );
+  }
+
+  Widget _miniStat(String label, double val, Color color) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: TextStyle(color: color.withOpacity(0.7), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+      const SizedBox(height: 4),
+      Text('${val.toStringAsFixed(1)}h', style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 1),
+    ],
+  );
+
+  String _breakText() {
+    final r = _r;
+    if (r == null || r.breakStart == null) return '--';
+    if (r.breakEnd == null) return '${r.breakStart}-…';
+    return '${r.breakStart}-${r.breakEnd}';
+  }
+
+  Widget _kvWhite(String k, String v) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(k, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      const SizedBox(height: 4),
+      Text(v, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+    ],
+  );
+
+  Widget _btn(String label, IconData icon, Color color, VoidCallback onTap) {
+    return Material(
+      color: color, borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16), onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(children: [
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _summary(WageResult w) {
+    final wd = DateTime.now().weekday;
+    final isSat = wd == 6;
+    final isSun = wd == 7;
+    final isWeekend = isSat || isSun || _r?.leaveType == 3;
+    
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.receipt_long_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
+          const SizedBox(width: 8),
+          Text(_s!.isFixedSalary ? '固定月薪模式' : '工时折算模式', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 14),
+        _line('正常工时', '${w.normalHours.toStringAsFixed(2)} 小时', '¥${w.basePay.toStringAsFixed(2)}'),
+        if (!isWeekend && w.overtimeHours1 > 0)
+          _line('一阶加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
+        if (!isWeekend && w.overtimeHours2 > 0)
+          _line('二阶加班', '${w.overtimeHours2.toStringAsFixed(2)} 小时', '¥${w.overtimePay2.toStringAsFixed(2)}'),
+        if (isWeekend && w.overtimeHours1 > 0)
+          _line(isSun ? '周日加班' : '周六加班', '${w.overtimeHours1.toStringAsFixed(2)} 小时', '¥${w.overtimePay1.toStringAsFixed(2)}'),
+        const Divider(height: 20),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('今日合计', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          Text('¥${w.totalPay.toStringAsFixed(2)}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _line(String k, String h, String money) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        Expanded(child: Text(k, style: const TextStyle(color: Color(0xFF6B7280)))),
+        Text(h, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
+        const SizedBox(width: 10),
+        Text(money, style: const TextStyle(fontWeight: FontWeight.w500)),
+      ],
+    ),
+  );
+}
