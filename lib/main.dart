@@ -4,7 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'db/database_helper.dart';
 import 'pages/calendar_page.dart';
-import 'pages/home_page.dart'; // 👈 就是这一行，确保它存在
+import 'pages/home_page.dart';
 import 'pages/settings_page.dart';
 import 'services/auto_checkin_service.dart';
 import 'services/notification_service.dart';
@@ -13,6 +13,22 @@ import 'services/widget_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // 拦截渲染错误，用文字显示出来，告别灰屏
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: Colors.red.shade50,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            '界面出现异常:\n\n${details.exceptionAsString()}\n\n${details.stack}',
+            style: const TextStyle(color: Colors.red, fontSize: 12),
+          ),
+        ),
+      ),
+    );
+  };
+
   runApp(const App());
 
   Future.delayed(Duration.zero, () async {
