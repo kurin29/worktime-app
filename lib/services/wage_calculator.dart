@@ -2,30 +2,11 @@ import '../models/app_settings.dart';
 import '../models/work_record.dart';
 
 class WageResult {
-  final double normalHours;
-  final double overtimeHours1;
-  final double overtimeHours2;
-  final double basePay;
-  final double overtimePay1;
-  final double overtimePay2;
-  final double totalPay;
-
-  WageResult({
-    required this.normalHours,
-    required this.overtimeHours1,
-    required this.overtimeHours2,
-    required this.basePay,
-    required this.overtimePay1,
-    required this.overtimePay2,
-    required this.totalPay,
-  });
-
+  final double normalHours, overtimeHours1, overtimeHours2, basePay, overtimePay1, overtimePay2, totalPay;
+  WageResult({required this.normalHours, required this.overtimeHours1, required this.overtimeHours2, required this.basePay, required this.overtimePay1, required this.overtimePay2, required this.totalPay});
   double get overtimeHours => overtimeHours1 + overtimeHours2;
   double get overtimePay => overtimePay1 + overtimePay2;
-
-  static WageResult zero() => WageResult(
-        normalHours: 0, overtimeHours1: 0, overtimeHours2: 0, basePay: 0, overtimePay1: 0, overtimePay2: 0, totalPay: 0,
-      );
+  static WageResult zero() => WageResult(normalHours: 0, overtimeHours1: 0, overtimeHours2: 0, basePay: 0, overtimePay1: 0, overtimePay2: 0, totalPay: 0);
 }
 
 class WageCalculator {
@@ -37,39 +18,30 @@ class WageCalculator {
     return s.monthlyBaseSalary / s.payDaysPerMonth / s.standardHoursPerDay;
   }
 
-  // 安全解析时间，解析失败返回 0
   static int _m(String? v) {
     if (v == null || v.isEmpty) return 0;
-    try {
-      final p = v.split(':').map(int.parse).toList();
-      return p[0] * 60 + p[1];
-    } catch (e) {
-      return 0;
-    }
+    try { final p = v.split(':').map(int.parse).toList(); return p[0] * 60 + p[1]; } catch (_) { return 0; }
   }
 
   WageResult calculateDay(WorkRecord? r) {
-    // 如果没有记录，或者只有上班没下班（甚至都没打卡），直接返回 0，防止崩溃
-    if (r == null || r.clockIn == null || r.clockOut == null) {
-      return WageResult.zero();
-    }
-    if (r.leaveType == 1 || r.leaveType == 2) {
-      return WageResult.zero();
-    }
+    if (r == null || r.clockIn == null || r.clockOut == null) return WageResult.zero();
+    if (r.leaveType == 1 || r.leaveType == 2) return WageResult.zero();
 
     final inM = _m(r.clockIn);
     var outM = _m(r.clockOut);
-    if (outM < inM) outM += 24 * 60; // 跨天
+    if (outM < inM) outM += 24 * 60;
 
-    final isWeekend = DateTime.tryParse(r.date)?.weekday != null && DateTime.parse(r.date).weekday >= 6 || r.leaveType == 3;
+    final wd = DateTime.tryParse(r.date)?.weekday ?? 1;
+    final isSaturday = wd == 6 || r.leaveType == 3;
+    final isSunday = wd == 7 || r.leaveType == 3; 
     
     double normalH = 0, ot1H = 0, ot2H = 0;
     double basePay = 0, ot1Pay = 0, ot2Pay = 0;
 
-    if (isWeekend) {
+    if (isSaturday || isSunday) {
       final h = (outM - inM - r.effectiveBreakMinutes) / 60.0;
       ot1H = h.clamp(0, 24);
-      ot1Pay = ot1H * s.weekendRate;
+      ot1Pay = ot1H * (isSunday ? s.sundayRate : s.saturdayRate);
     } else {
       final stdOut = _m(s.standardClockOut);
       final phase1End = _m(s.phase1End);
@@ -91,16 +63,13 @@ class WageCalculator {
 
       double breakH = r.effectiveBreakMinutes / 60.0;
       if (normalH > 0) {
-        if (normalH >= breakH) { normalH -= breakH; breakH = 0; } 
-        else { breakH -= normalH; normalH = 0; }
+        if (normalH >= breakH) { normalH -= breakH; breakH = 0; } else { breakH -= normalH; normalH = 0; }
       }
       if (breakH > 0 && ot1H > 0) {
-        if (ot1H >= breakH) { ot1H -= breakH; breakH = 0; } 
-        else { breakH -= ot1H; ot1H = 0; }
+        if (ot1H >= breakH) { ot1H -= breakH; breakH = 0; } else { breakH -= ot1H; ot1H = 0; }
       }
       if (breakH > 0 && ot2H > 0) {
-        if (ot2H >= breakH) { ot2H -= breakH; } 
-        else { ot2H = 0; }
+        if (ot2H >= breakH) { ot2H -= breakH; } else { ot2H = 0; }
       }
 
       basePay = s.isFixedSalary ? (s.monthlyBaseSalary / s.payDaysPerMonth) : (normalH * baseHourlyRate);
@@ -109,13 +78,8 @@ class WageCalculator {
     }
 
     return WageResult(
-      normalHours: normalH.clamp(0, 24),
-      overtimeHours1: ot1H.clamp(0, 24),
-      overtimeHours2: ot2H.clamp(0, 24),
-      basePay: basePay,
-      overtimePay1: ot1Pay,
-      overtimePay2: ot2Pay,
-      totalPay: basePay + ot1Pay + ot2Pay,
+      normalHours: normalH.clamp(0, 24), overtimeHours1: ot1H.clamp(0, 24), overtimeHours2: ot2H.clamp(0, 24),
+      basePay: basePay, overtimePay1: ot1Pay, overtimePay2: ot2Pay, totalPay: basePay + ot1Pay + ot2Pay,
     );
   }
 
@@ -126,30 +90,13 @@ class WageCalculator {
 
     for (final r in list) {
       final w = calculateDay(r);
-      nH += w.normalHours;
-      ot1H += w.overtimeHours1;
-      ot2H += w.overtimeHours2;
-      ot1 += w.overtimePay1;
-      ot2 += w.overtimePay2;
-
+      nH += w.normalHours; ot1H += w.overtimeHours1; ot2H += w.overtimeHours2;
+      ot1 += w.overtimePay1; ot2 += w.overtimePay2;
       if (r.leaveType == 1) leaveDeduction += dailyPay * s.personalLeaveRatio;
       if (r.leaveType == 2) leaveDeduction += dailyPay * s.sickLeaveRatio;
     }
 
-    if (s.isFixedSalary) {
-      base = (s.monthlyBaseSalary - leaveDeduction).clamp(0, double.infinity);
-    } else {
-      base = nH * baseHourlyRate;
-    }
-
-    return WageResult(
-      normalHours: nH,
-      overtimeHours1: ot1H,
-      overtimeHours2: ot2H,
-      basePay: base,
-      overtimePay1: ot1,
-      overtimePay2: ot2,
-      totalPay: base + ot1 + ot2,
-    );
+    if (s.isFixedSalary) { base = (s.monthlyBaseSalary - leaveDeduction).clamp(0, double.infinity); } else { base = nH * baseHourlyRate; }
+    return WageResult(normalHours: nH, overtimeHours1: ot1H, overtimeHours2: ot2H, basePay: base, overtimePay1: ot1, overtimePay2: ot2, totalPay: base + ot1 + ot2);
   }
 }
