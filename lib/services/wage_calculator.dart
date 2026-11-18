@@ -38,8 +38,12 @@ class WageCalculator {
   }
 
   static int _m(String v) {
-    final p = v.split(':').map(int.parse).toList();
-    return p[0] * 60 + p[1];
+    try {
+      final p = v.split(':').map(int.parse).toList();
+      return p[0] * 60 + p[1];
+    } catch (e) {
+      return 0; // 容错：解析失败返回0
+    }
   }
 
   WageResult calculateDay(WorkRecord? r) {
@@ -56,7 +60,6 @@ class WageCalculator {
     double basePay = 0, ot1Pay = 0, ot2Pay = 0;
 
     if (isWeekend) {
-      // 周末全部算加班
       final h = (outM - inM - r.effectiveBreakMinutes) / 60.0;
       ot1H = h.clamp(0, 24);
       ot1Pay = ot1H * s.weekendRate;
@@ -64,25 +67,21 @@ class WageCalculator {
       final stdOut = _m(s.standardClockOut);
       final phase1End = _m(s.phase1End);
 
-      // 1. 正常工时
       final normEnd = outM < stdOut ? outM : stdOut;
       final norm = normEnd - inM;
       if (norm > 0) normalH = norm / 60.0;
 
-      // 2. 加班段1
       if (outM > stdOut) {
         final o1End = outM < phase1End ? outM : phase1End;
         final o1 = o1End - stdOut;
         if (o1 > 0) ot1H = o1 / 60.0;
       }
 
-      // 3. 加班段2
       if (outM > phase1End) {
         final o2 = outM - phase1End;
         ot2H = o2 / 60.0;
       }
 
-      // 扣除休息时间
       double breakH = r.effectiveBreakMinutes / 60.0;
       if (normalH > 0) {
         if (normalH >= breakH) { normalH -= breakH; breakH = 0; } 
