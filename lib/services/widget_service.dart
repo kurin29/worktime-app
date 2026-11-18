@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
@@ -35,9 +34,7 @@ class WidgetService {
 
   static String _break(WorkRecord? r) {
     if (r == null) return '--';
-    if (r.breakStart != null && r.breakEnd != null) {
-      return '${r.breakStart}-${r.breakEnd}';
-    }
+    if (r.breakStart != null && r.breakEnd != null) return '${r.breakStart}-${r.breakEnd}';
     if (r.breakStart != null) return '${r.breakStart}-…';
     return '--';
   }
